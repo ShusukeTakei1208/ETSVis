@@ -1,0 +1,45 @@
+script <- sub("^--file=","",grep("^--file=",commandArgs(FALSE),value=TRUE))
+root <- dirname(dirname(normalizePath(script)))
+d <- read.csv(file.path(root,"output/et_npv5_source.csv"),fileEncoding="UTF-8-BOM")
+codes <- c("World","JPN","USA","CAN","XE25","XOC","TUR","XER","CIS","CHN","IND","XSE","XSA","BRA","XLM","XME","XNF","XAF")
+regions <- c("World","Japan","United States","Canada","EU25","Oceania","Turkey","Rest of Europe","Former Soviet Union","China","India","Southeast Asia","Rest of Asia","Brazil","Rest of South America","Middle East","North Africa","Rest of Africa")
+ids <- c("SSP2_2020NDC_NZE_NoCC_No","SSP2_2020_NZE_test_NoCC_No")
+values <- sapply(ids,function(s){
+ z <- subset(d,scenario==s & year==2100 & variable=="Pol_Cos_Cns_Los_rat_NPV_5pc" & region %in% codes)
+ stopifnot(nrow(z)==18,!anyDuplicated(z$region))
+ z$value[match(codes,z$region)]
+})
+stopifnot(all(is.finite(values)))
+write.csv(data.frame(region=codes,name=regions,NZE_without_ET_pct=values[,1],NZE_with_ET_pct=values[,2]),
+ file.path(root,"output/cumulative_consumption_loss_rate_old_2100_5pct.csv"),row.names=FALSE)
+draw <- function(){
+ par(fig=c(0,1,.10,1),mar=c(10,5,4,1),oma=c(0,0,0,0),family="sans",mgp=c(2.8,.65,0))
+ lim <- range(0,values); span <- diff(lim)
+ plot(NA,xlim=c(.5,18.5),ylim=lim+c(-.09,.15)*span,axes=FALSE,xlab="",ylab="Cumulative consumption loss (%)",xaxs="i")
+ ticks <- pretty(lim)
+ abline(h=ticks,col="#EEEEEE")
+ abline(h=0,col="#A0A0A0")
+ segments(1:18,values[,1],1:18,values[,2],lty=2,col="#555555",lwd=1)
+ points(1:18,values[,1],pch=19,col="#1457ED",cex=1.05)
+ points(1:18,values[,2],pch=19,col="#F04416",cex=1.05)
+ axis(2,at=ticks,las=1)
+ axis(1,at=1:18,labels=FALSE)
+ usr <- par("usr")
+ text(1:18,usr[3]-.035*span,regions,srt=45,adj=1,xpd=NA,cex=.88,
+      col=ifelse(values[,2]>values[,1],"#B45309","#222222"),font=1)
+ box(col="#AAAAAA")
+ mtext("Cumulative consumption loss through 2100",3,line=2,font=2,adj=0,cex=1.3)
+ par(fig=c(0,1,0,.10),new=TRUE,mar=rep(0,4))
+ plot.new()
+ legend("center",inset=c(0,0),legend=c("NZE_w/oET","NZE_w/ET"),pch=19,
+        col=c("#1457ED","#F04416"),horiz=TRUE,bty="n",cex=1.05)
+ text(.5,.10,"Orange region names: greater loss with ET than without ET.",cex=.72,col="#B45309")
+}
+stem <- file.path(root,"output/cumulative_consumption_loss_rate_old_2100_5pct")
+png(paste0(stem,".png"),width=2400,height=1400,res=180)
+draw()
+dev.off()
+pdf(paste0(stem,".pdf"),width=13.333,height=7.778)
+draw()
+dev.off()
+
